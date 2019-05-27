@@ -1,0 +1,11 @@
+FIRST STEPS
+
+ * Make sure you have nodejs v6 installed
+ * Install all node dependencies
+   > npm install
+ * Get installation file pack
+   > cp /media/trabug_usb/provision_files.tbz /tmp/provision_files.tbz
+ * Extract installation files
+   > tar --jxf /tmp/provision_files.tbz
+ * Cleanup temp file (optional)
+   > rm /tmp/provision_files.tbz

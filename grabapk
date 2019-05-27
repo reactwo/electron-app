@@ -1,0 +1,45 @@
+#!/bin/bash
+if [ -z "$1" ]; then
+    # Show all packages
+    adb shell pm list packages | cut -f 2 -d ':'
+    echo
+    echo "> Please specify a package name from the above list"
+    echo
+    exit;
+fi
+
+app=$1
+
+results=$(adb shell pm list packages | grep $app | cut -f 2 -d ':')
+found=$(echo $results | awk '{print NF}')
+
+if [ "$found" == "0" ]; then
+    echo
+    echo "ERR: Failed to find a package containing: $app"
+    echo
+    adb shell pm list packages
+    echo
+    echo "> Please specify a package name from the above list"
+    echo
+    exit;
+fi
+
+if [ "$found" != "1" ]; then
+    echo
+    echo "ERROR: Found multiple packages containing: $app";
+    echo
+    for p in $results; do
+        echo $p
+    done
+    echo
+    echo "> Please specify a package name from the above list"
+    echo
+    exit;
+fi
+
+
+pkg=$(echo $results | tr -d '\r')
+path=$(adb shell pm path $pkg | cut -f 2 -d ':' | tr -d '\r')
+echo "Downloading ${path} to ${app}.apk"
+adb pull ${path} ${app}.apk
+

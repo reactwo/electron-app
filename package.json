@@ -1,0 +1,24 @@
+{
+  "name": "provisioner",
+  "version": "1.0.0",
+  "description": "Trabug device provisioner",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron main.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/atom/electron-quick-start.git"
+  },
+  "author": "Trabug",
+  "devDependencies": {
+    "extract-zip": "=1.6.0",
+    "electron": "^1.4"
+  },
+  "dependencies": {
+    "async": "^2.1",
+    "bulma": "^0.2",
+    "font-awesome": "^4.6",
+    "zepto": "^1.1"
+  }
+}

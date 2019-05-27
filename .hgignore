@@ -1,0 +1,6 @@
+syntax: glob
+releases/
+files/
+node_modules/
+adb
+aapt

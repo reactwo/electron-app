@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Trabug Device Provision</title>
+    <link rel="stylesheet" type="text/css" href="node_modules/font-awesome/css/font-awesome.min.css">
+    <link rel="stylesheet" type="text/css" href="node_modules/bulma/css/bulma.css">
+    <script type="text/javascript" src="node_modules/zepto/dist/zepto.min.js"></script>
+    <script type="text/javascript" src="steps.js"></script>
+    <style type="text/css">
+      #heading_text {
+        font-weight: bold;
+        font-size: 150%;
+        margin-left: 20px;
+      }
+    </style>
+  </head>
+  <body onload="bodyLoaded();">
+    <header class="header">
+      <div class="header-left">
+        <span id="heading_text">Waiting for device...</span>
+      </div>
+    </header>
+    <div id="notifications"></div>
+    <section class="section">
+      <div class="container">
+        <div class="heading">
+          <h1 class="title" id="step_title"></h1>
+          <h2 class="subtitle" id="step_subtitle"></h2>
+        </div>
+        <div class="content">
+          <p id="step_text"></p>
+        </div>
+        <hr>
+        <a id="step_action" onclick="onStepActionStart()" class="button is-medium is-primary is-disabled">Update</a>
+        <a id="step_skip" onclick="onSkipAction()" style="display: none" class="button is-pulled-right is-medium is-disabled">Skip</a>
+      </div>
+    </section>
+    <script type="text/javascript">
+        const ipcRenderer = require('electron').ipcRenderer;
+
+        var currentStep = 1;
+        var currentModel = null;
+        var STEPS = [
+          {
+            title: 'Step 1',
+            subtitle: 'Setup Developer Mode',
+            text: "<ol>\
+                  <li>Open the <strong>Settings App</strong></li>\
+                  <li>Scroll down and tap <strong>About phone</strong></li>\
+                  <li>Scroll down and keep tapping on the <strong>Build number</strong> row until you see a message saying - <strong><em>You are now a developer!</em></strong></li>\
+                  <li>Go <strong>Back</strong> to the Settings list</li>\
+                  <li>Tap <strong>Developer options</strong> from the list</li>\
+                  <li>Enable the <strong>On</strong> switch, if required</li>\
+                  <li><strong><em>Enable</em> Android/USB debugging</strong>. Tap <strong>OK</strong> on the confirmation dialog.</li>\
+                  <li>Now <strong>connect the device via USB</strong> cable. Agree to any dialog, if one pops up.</li>\
+                  </ol>",
+            btn: 'Done',
+            skippable: false,
+            autostart: false,
+            action: () => {
+              addDeviceSteps();
+              onStepActionComplete(true);
+            }
+          }
+        ];
+
+        const LAST_STEPS = [
+          {
+            title: 'Device Step 1',
+            subtitle: 'Setting up the Hotspot',
+            text: "<ol>\
+                    <li>Please read below carefully and perform the instructions on the device.</li>\
+                    <li>Tap the <strong>Setup Hotspot</strong> button on the device to start</li>\
+                    <li>Select <strong>Tethering &amp; portable hotspot</strong></li>\
+                    <li>Then tap on <strong>Set up Wi-Fi hotspot</strong></li>\
+                    <li>Change the <strong>Security</strong> option None to <strong>WPA2 PSK</strong></li>\
+                    <li>Tap and hold down on <strong>Password</strong> till the <strong>PASTE</strong> option pops-up</li>\
+                    <li>Tap <strong>PASTE</strong> and then tap <strong>SAVE</strong></li>\
+                    <li>Finally, press the <strong>device Back button</strong> twice to get back to the device setup screen.</li>\
+                  </ol>",
+            btn: 'Device Step 1 Completed',
+            skippable: false,
+            autostart: false,
+            action: () => {
+              onStepActionComplete(true);
+            }
+          }
+        ];
+
+        function loadStep(step)
+        {
+          $('#step_title').text(STEPS[step - 1].title);
+          $('#step_subtitle').text(STEPS[step - 1].subtitle);
+          $('#step_text').html(STEPS[step - 1].text);
+          $('#step_action').removeClass('is-loading').text(STEPS[step - 1].btn);
+          if (STEPS[step - 1].skippable) {
+            $('#step_skip').removeClass('is-disabled').show();
+          } else {
+            $('#step_skip').addClass('is-disabled').hide();
+          }
+        }
+
+        function addDeviceSteps(step)
+        {
+          if (currentModel) {
+            STEPS = STEPS.concat(DEVICE_STEPS[currentModel]);
+          }
+          STEPS = STEPS.concat(LAST_STEPS);
+        }
+
+        function bodyLoaded() {
+          loadStep(currentStep);
+          ipcRenderer.on('model', (event, model) => {
+            if (model && DEVICE_STEPS.hasOwnProperty(model)) {
+              currentModel = model;
+            }
+          });
+
+          ipcRenderer.on('device', (event, status, name) => {
+            if (status == "waiting") {
+              $('#heading_text').text("Waiting for device...");
+              return;
+            }
+            if (status == "connected") {
+              $('#step_action').removeClass('is-disabled');
+              if (STEPS[currentStep - 1].skippable) {
+                $('#step_skip').removeClass('is-disabled');
+              }
+            } else if (status == "disconnected") {
+              if (currentStep == 0) {
+                location.reload(true);
+              }
+              else if (currentStep < (STEPS.length - 1)) {
+                $('#step_action').addClass('is-disabled');
+                if (STEPS[currentStep - 1].skippable) {
+                  $('#step_skip').addClass('is-disabled');
+                }
+              }
+            }
+            $('#heading_text').text(`${status}: ${name}`);
+          });
+
+          ipcRenderer.on('action-complete', (event, status) => {
+            onStepActionComplete(status);
+          });
+        }
+
+        function onSkipAction() {
+          onStepActionComplete(true);
+        }
+
+        function onStepActionComplete(status) {
+          // If step action succeeds, move to next step
+          if (status === true) {
+            if (currentStep >= STEPS.length) {
+              currentStep = 0;
+              $('#step_skip').addClass('is-disabled').hide();
+              $('#step_action').removeClass('is-loading').addClass('is-disabled').hide();
+              $('#step_title').text('Desktop steps complete!');
+              $('#step_subtitle').text('Further steps are to be completed on the device itself');
+              $('#step_text').html("<strong>Please close this application</strong>");
+            } else {
+              currentStep += 1;
+              loadStep(currentStep);
+
+              if (STEPS[currentStep - 1].autostart) {
+                setTimeout(onStepActionStart, 10);
+              }
+            }
+          // Step action failed!
+          } else {
+            $('#notifications').append(`<div class="notification is-danger">${status}! Please retry.</div>`);
+            $('#step_action').removeClass('is-loading');
+            if (STEPS[currentStep - 1].skippable) {
+              $('#step_skip').removeClass('is-disabled');
+            }
+          }
+        }
+
+        function onStepActionStart()
+        {
+          $('#step_action').addClass('is-loading');
+          if (STEPS[currentStep - 1].skippable) {
+            $('#step_skip').addClass('is-disabled');
+          }
+          $('#notifications').empty();
+          STEPS[currentStep - 1].action();
+        }
+    </script>
+  </body>
+</html>
