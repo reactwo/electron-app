@@ -16,7 +16,7 @@
     "electron": "^1.4"
   },
   "dependencies": {
-    "async": "^2.1",
+    "async": "^3.2",
     "bulma": "^0.2",
     "font-awesome": "^4.6",
     "zepto": "^1.1"
